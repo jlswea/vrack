@@ -5,6 +5,8 @@
 // --- VanMoof Light Dimensions (in mm) ---
 light_diameter = 50;      // The exact diameter of your circular light.
 light_holder_depth = 30;  // How deep the cradle holding the light should be.
+light_offset_y = 3;
+light_offset_z = 5;
 
 // --- Racktime Mount Dimensions (in mm) ---
 rack_plate_width = 75;
@@ -12,6 +14,7 @@ rack_hole_spacing = 50;   // The distance between the center of the two screw ho
 rack_screw_diameter = 6;  // The diameter of the screw threads (e.g., 5 for an M5 screw).
 rack_screw_head_diameter = 10; // The diameter of the flat top of the screw head.
 rack_screw_head_depth = 3;  // The height of the screw head (for countersinking).
+rack_screw_cutout_downward_slope = 5;
 
 // --- General Design Parameters (in mm) ---
 wall_thickness = 3;       // General thickness for walls. 3-5mm is good for strength.
@@ -30,8 +33,8 @@ plate_height = rack_screw_head_diameter + wall_thickness;
 holder_outer_d = light_diameter + 2 * wall_thickness;
 light_holder_translate = [
             rack_plate_width / 2, 
-            light_diameter / 2 + 2 * wall_thickness,
-            - light_holder_depth
+            light_diameter / 2 + 2 * wall_thickness + light_offset_y,
+            - (light_holder_depth + light_offset_z)
         ];
 
 module base() {
@@ -42,6 +45,24 @@ module base() {
         // 2. Solid cylinder for holding the light
         translate(light_holder_translate)
             cylinder(h = light_holder_depth + wall_thickness, d = holder_outer_d);
+    }
+}
+
+module countersink_hole() {
+    cutout = rack_screw_head_diameter + fit_tolerance;
+    scaled_cutout = cutout * 1.5;
+    hull(){
+        cylinder(h = light_holder_depth, d = cutout);
+        translate([-cutout / 2,0, rack_screw_head_depth])
+            rotate([0,0,0])
+                hull() {
+                    cube([cutout, 1, light_holder_depth]);
+                    translate([-(scaled_cutout - cutout) / 2, -10, 0])
+                        cube([scaled_cutout, 1, light_holder_depth]);
+                }
+        translate([0,0,rack_screw_head_depth * 2])
+        rotate([-rack_screw_cutout_downward_slope, 0, 0])
+            cylinder(h = light_holder_depth, d = rack_screw_head_diameter + fit_tolerance);
     }
 }
 
@@ -68,7 +89,7 @@ module van_rack() {
             // Countersink for the screw head
             translate([x_pos, plate_height / 2, -rack_screw_head_depth])
                 rotate([0,180,0])
-                    cylinder(h = light_holder_depth, d = rack_screw_head_diameter + fit_tolerance);
+                    countersink_hole();
         }
         
         // Inner cylinder (for the light)
